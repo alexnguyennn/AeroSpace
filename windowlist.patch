@@ -1,0 +1,16 @@
+---
+ Sources/AppBundle/command/impl/ListWindowsCommand.swift | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/Sources/AppBundle/command/impl/ListWindowsCommand.swift b/Sources/AppBundle/command/impl/ListWindowsCommand.swift
+index 2802fa00..c9a95e7f 100644
+--- a/Sources/AppBundle/command/impl/ListWindowsCommand.swift
++++ b/Sources/AppBundle/command/impl/ListWindowsCommand.swift
+@@ -48,7 +48,6 @@ struct ListWindowsCommand: Command {
+                 _list.append((window, try await window.title))
+             }
+             _list = _list.filter { $0.window.isBound }
+-            _list = _list.sortedBy([{ $0.window.app.name ?? "" }, \.title])
+ 
+             let list = _list.map { AeroObj.window(window: $0.window, title: $0.title) }
+             if args.json {
