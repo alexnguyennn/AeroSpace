@@ -5,6 +5,8 @@ on:
     branches:
       - 'main'
       - 'rr/**' # "rr" stands for "remote run"
+    tags:
+      - 'v*' # Trigger on version tags (e.g., v1.0.0)
   pull_request:
     branches: [ "main" ]
   workflow_dispatch: # Enable manual triggering
@@ -51,11 +53,72 @@ jobs:
       - run: ./.github/gh-actions-runner-xcode-select.sh
       - run: brew install bash fish xcbeautify swiftly
       - run: swiftly init --skip-install --assume-yes --verbose && swiftly install
+      - name: 'Determine build version'
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            # Extract version from tag (e.g., v1.0.0 -> 1.0.0)
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            # Use SNAPSHOT for non-tag builds
+            VERSION="0.0.0-SNAPSHOT"
+          fi
+          echo "BUILD_VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
       - name: './build-release.sh'
         run: |
           # "-" means "Sign to run locally". There is no aerospace-codesign-certificate on GH Actions
-          ./build-release.sh --codesign-identity -
+          ./build-release.sh --codesign-identity - --build-version "${{ steps.version.outputs.BUILD_VERSION }}"
           ./install-from-sources.sh --dont-rebuild
       - name: cat ./.release/xcodebuild.log
         if: ${{ always() }}
         run: 'if test -f ./.release/xcodebuild.log; then cat ./.release/xcodebuild.log; fi'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: AeroSpace-${{ steps.version.outputs.BUILD_VERSION }}-${{ matrix.os }}
+          path: |
+            .release/AeroSpace-v*.zip
+            .release/aerospace.rb
+            .release/xcodebuild.log
+          retention-days: 90
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          # Use the zip from macos-15 as the primary release artifact
+          cp artifacts/AeroSpace-${{ steps.version.outputs.VERSION }}-macos-15/AeroSpace-v*.zip release-assets/ || true
+          # Also include the homebrew cask file
+          cp artifacts/AeroSpace-${{ steps.version.outputs.VERSION }}-macos-15/aerospace.rb release-assets/ || true
+          ls -la release-assets/
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release-assets/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
