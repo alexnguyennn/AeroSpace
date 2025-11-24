@@ -73,16 +73,28 @@ jobs:
       - name: cat ./.release/xcodebuild.log
         if: ${{ always() }}
         run: 'if test -f ./.release/xcodebuild.log; then cat ./.release/xcodebuild.log; fi'
+      - name: List release artifacts for debugging
+        run: |
+          echo "=== .release directory contents ==="
+          ls -la .release/
+          echo "=== Checking for zip file ==="
+          ls -la .release/*.zip || echo "No zip files found"
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
-        if: ${{ always() }}
         with:
           name: AeroSpace-${{ steps.version.outputs.BUILD_VERSION }}-${{ matrix.os }}
           path: |
-            .release/AeroSpace-v*.zip
+            .release/AeroSpace-v${{ steps.version.outputs.BUILD_VERSION }}.zip
             .release/aerospace.rb
-            .release/xcodebuild.log
+            .release/aerospace-dev.rb
           retention-days: 90
+      - name: Upload build logs
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: build-logs-${{ matrix.os }}
+          path: .release/xcodebuild.log
+          retention-days: 30
 
   create-release:
     name: Create GitHub Release
