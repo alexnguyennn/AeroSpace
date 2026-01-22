@@ -1,0 +1,87 @@
+* Syncing Fork with Upstream
+
+For maintainers of this fork, follow these steps to sync with the upstream repository:
+
+**1. Fetch upstream changes**
+#+begin_src bash
+git fetch upstream
+#+end_src
+
+**2. Reset main to upstream**
+#+begin_src bash
+git checkout main
+git reset --hard upstream/main
+#+end_src
+
+**3. Rebase rr/customise on main**
+#+begin_src bash
+git checkout rr/customise
+git rebase main
+#+end_src
+
+**4. Resolve conflicts and tag a release version**
+- Resolve any merge conflicts that arise during rebase
+- Tag the release with format vX.Y.Z-commitsha-alex:
+#+begin_src bash
+git tag v0.14.0-abc123-alex
+#+end_src
+
+**5. Push up and wait for CI to cut a release**
+#+begin_src bash
+git push origin rr/customise --tags
+#+end_src
+Wait for the CI pipeline to complete and automatically create a release.
+
+**6. (Optional) Download release to test locally**
+#+begin_src bash
+gh release download v0.14.0-abc123-alex
+#+end_src
+- Note: replace both =Aerospace.app= and =aerospace= binary to align client and server versions in testing
+- Bundle ID will be the same so hammerspoon restart method may break
+
+**7. Update the brew formula in alexnguyennn/tap to new version**
+- Release bundle will have an updated =aerospace.rb= file to use, just need to replace the URL to be release URL instead of the action runner's local path
+#+begin_src bash
+# Use real localdisk path here
+cd ~/path/to/alexnguyennn/tap
+# Update the version and SHA256 in aerospace.rb
+#+end_src
+
+**8. Update brew installed version**
+- Via Nix: =nh darwin switch -v .=
+- Or manually: =brew upgrade aerospace=
+
+* Bundle ID Configuration
+
+The app bundle identifier is configured in =project.yml= and used during builds via XcodeGen.
+NOTE: this is how macOS determines uniqueness of app on startup/with permissions etc - change if we run into problems running side by side with public release
+
+**Primary Configuration Location:**
+- File: =project.yml= (lines 40 & 43)
+- Debug bundle ID: =bobko.aerospace.debug=
+- Release bundle ID: =bobko.aerospace=
+
+#+begin_src yaml
+settings:
+  configs:
+    Debug:
+      PRODUCT_NAME: AeroSpace-Debug
+      PRODUCT_BUNDLE_IDENTIFIER: bobko.aerospace.debug
+    Release:
+      PRODUCT_NAME: AeroSpace
+      PRODUCT_BUNDLE_IDENTIFIER: bobko.aerospace
+#+end_src
+
+**Build Process:**
+1. =generate.sh= is called by =build-release.sh= (lines 22-24)
+2. =generate.sh= runs XcodeGen (line 66) which reads =project.yml=
+3. XcodeGen generates =AeroSpace.xcodeproj/project.pbxproj= with bundle IDs
+4. =xcodebuild= uses the generated project to build the app
+5. GitHub Actions workflow (=.github/workflows/build.yml=) orchestrates this automatically
+
+**To Change Bundle ID:**
+- Edit =project.yml= lines 40 and/or 43
+- Run =./generate.sh= to regenerate the Xcode project
+- The CI workflow handles this automatically during builds
+
+**Note:** The =AeroSpace.xcodeproj/project.pbxproj= file is auto-generated - do not edit it directly.
