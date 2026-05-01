@@ -8,9 +8,12 @@ struct FocusCommand: Command {
     func run(_ env: CmdEnv, _ io: CmdIo) async throws -> Bool {
         guard let target = args.resolveTargetOrReportError(env, io) else { return false }
         // todo bug: floating windows break mru
-        let floatingWindows = args.floatingAsTiling ? try await makeFloatingWindowsSeenAsTiling(workspace: target.workspace) : []
+        // dfsRelative appends floating windows at end (matching list-windows --dfs-order)
+        // rather than using position-based insertion which is unstable across calls
+        let needsPositionalFloating = args.floatingAsTiling && !args.target.isDfsRelative
+        let floatingWindows = needsPositionalFloating ? try await makeFloatingWindowsSeenAsTiling(workspace: target.workspace) : []
         defer {
-            if args.floatingAsTiling {
+            if needsPositionalFloating {
                 restoreFloatingWindows(floatingWindows: floatingWindows, workspace: target.workspace)
             }
         }
@@ -38,7 +41,10 @@ struct FocusCommand: Command {
                     return io.err("Can't find window with DFS index \(dfsIndex)")
                 }
             case .dfsRelative(let nextPrev):
-                let windows = target.workspace.rootTilingContainer.allLeafWindowsRecursive
+                var windows = target.workspace.rootTilingContainer.allLeafWindowsRecursive
+                if args.floatingAsTiling {
+                    windows.append(contentsOf: target.workspace.floatingWindows)
+                }
                 guard let currentIndex = windows.firstIndex(where: { $0 == target.windowOrNil }) else {
                     return false
                 }
@@ -115,15 +121,17 @@ struct FocusCommand: Command {
     return windowToFocus.focusWindow()
 }
 
-@MainActor private func makeFloatingWindowsSeenAsTiling(workspace: Workspace) async throws -> [FloatingWindowData] {
+@MainActor func makeFloatingWindowsSeenAsTiling(workspace: Workspace) async throws -> [FloatingWindowData] {
     let mruBefore = workspace.mostRecentWindowRecursive
     defer {
         mruBefore?.markAsMostRecentChild()
     }
     var _floatingWindows: [FloatingWindowData] = []
     for window in workspace.floatingWindows {
+        guard window.isBound else { continue }
         let center = try await window.getCenter() // todo bug: we shouldn't access ax api here. What if the window was moved but it wasn't committed to ax yet?
         guard let center else { continue }
+        guard window.isBound else { continue } // Window may have been unbound during await suspension
 
         let tilingParent: TilingContainer
         let index: Int
@@ -131,6 +139,7 @@ struct FocusCommand: Command {
             .findIn(tree: workspace.rootTilingContainer, virtual: true)
         {
             guard let targetCenter = try await target.getCenter() else { continue }
+            guard window.isBound else { continue } // Window may have been unbound during await suspension
             guard let _tilingParent = target.parent as? TilingContainer else { continue }
             tilingParent = _tilingParent
             index = center.getProjection(tilingParent.orientation) >= targetCenter.getProjection(tilingParent.orientation)
@@ -159,7 +168,7 @@ struct FocusCommand: Command {
     return floatingWindows
 }
 
-@MainActor private func restoreFloatingWindows(floatingWindows: [FloatingWindowData], workspace: Workspace) {
+@MainActor func restoreFloatingWindows(floatingWindows: [FloatingWindowData], workspace: Workspace) {
     let mruBefore = workspace.mostRecentWindowRecursive
     defer {
         mruBefore?.markAsMostRecentChild()
@@ -169,7 +178,7 @@ struct FocusCommand: Command {
     }
 }
 
-private struct FloatingWindowData {
+struct FloatingWindowData {
     let window: Window
     let center: CGPoint
 
