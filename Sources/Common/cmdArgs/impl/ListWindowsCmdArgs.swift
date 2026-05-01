@@ -23,6 +23,7 @@ public struct ListWindowsCmdArgs: CmdArgs {
             "--format": formatParser(\._format, for: .window),
             "--count": trueBoolFlag(\.outputOnlyCount),
             "--json": trueBoolFlag(\.json),
+            "--dfs-order": trueBoolFlag(\.dfsOrder),
         ],
         posArgs: [],
         conflictingOptions: [
@@ -30,6 +31,8 @@ public struct ListWindowsCmdArgs: CmdArgs {
             ["--all", "--focused", "--monitor"],
             ["--count", "--format"],
             ["--count", "--json"],
+            ["--dfs-order", "--focused"],
+            ["--dfs-order", "--all"],
         ],
     )
 
@@ -39,6 +42,7 @@ public struct ListWindowsCmdArgs: CmdArgs {
     public var _format: [StringInterToken] = []
     public var outputOnlyCount: Bool = false
     public var json: Bool = false
+    public var dfsOrder: Bool = false
 
     /*conforms*/ public var windowId: UInt32?
     /*conforms*/ public var workspaceName: WorkspaceName?

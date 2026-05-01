@@ -115,15 +115,17 @@ struct FocusCommand: Command {
     return windowToFocus.focusWindow()
 }
 
-@MainActor private func makeFloatingWindowsSeenAsTiling(workspace: Workspace) async throws -> [FloatingWindowData] {
+@MainActor func makeFloatingWindowsSeenAsTiling(workspace: Workspace) async throws -> [FloatingWindowData] {
     let mruBefore = workspace.mostRecentWindowRecursive
     defer {
         mruBefore?.markAsMostRecentChild()
     }
     var _floatingWindows: [FloatingWindowData] = []
     for window in workspace.floatingWindows {
+        guard window.isBound else { continue }
         let center = try await window.getCenter() // todo bug: we shouldn't access ax api here. What if the window was moved but it wasn't committed to ax yet?
         guard let center else { continue }
+        guard window.isBound else { continue } // Window may have been unbound during await suspension
 
         let tilingParent: TilingContainer
         let index: Int
@@ -131,6 +133,7 @@ struct FocusCommand: Command {
             .findIn(tree: workspace.rootTilingContainer, virtual: true)
         {
             guard let targetCenter = try await target.getCenter() else { continue }
+            guard window.isBound else { continue } // Window may have been unbound during await suspension
             guard let _tilingParent = target.parent as? TilingContainer else { continue }
             tilingParent = _tilingParent
             index = center.getProjection(tilingParent.orientation) >= targetCenter.getProjection(tilingParent.orientation)
@@ -159,7 +162,7 @@ struct FocusCommand: Command {
     return floatingWindows
 }
 
-@MainActor private func restoreFloatingWindows(floatingWindows: [FloatingWindowData], workspace: Workspace) {
+@MainActor func restoreFloatingWindows(floatingWindows: [FloatingWindowData], workspace: Workspace) {
     let mruBefore = workspace.mostRecentWindowRecursive
     defer {
         mruBefore?.markAsMostRecentChild()
@@ -169,7 +172,7 @@ struct FocusCommand: Command {
     }
 }
 
-private struct FloatingWindowData {
+struct FloatingWindowData {
     let window: Window
     let center: CGPoint
 
