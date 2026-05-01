@@ -53,6 +53,84 @@ cd ~/path/to/alexnguyennn/tap
 - Via Nix: =nh darwin switch -v .=
 - Or manually: =brew upgrade aerospace=
 
+* Fork Patch Diagram
+
+The =rr/customise= branch carries minimal patches on top of upstream release tags.
+Each patch is designed to be small and independently re-appliable during rebase.
+
+#+begin_example
+  upstream v0.20.3-Beta
+  │
+  ├── a6edd40e  ci(github): remove cron and enable manual build
+  │     └─ .github/workflows/build.yml
+  │     └─ Why: upstream CI uses cron + auto-close; we want manual-trigger only
+  │
+  ├── b4279851  fix: patch out window sort
+  │     └─ ListWindowsCommand.swift (1 line deletion)
+  │     └─ Why: upstream sorts list-windows by app name alphabetically;
+  │        we need tree-order output for sketchybar to match spatial layout
+  │     └─ Ref: https://github.com/nikitabobko/AeroSpace/issues/491#issuecomment-2980775081
+  │
+  ├── ed5d7bba  ci(github): add artifact upload
+  │     └─ .github/workflows/build.yml
+  │     └─ Why: CI produces release artifacts for our brew tap
+  │
+  ├── f9d6510b  test(github): show .release folder for what to upload
+  │     └─ .github/workflows/build.yml
+  │     └─ Why: debug CI artifact paths
+  │
+  ├── adf548bb  docs: add sync with upstream steps
+  │     └─ sync-with-upstream.org (this file, fork-only, zero conflict risk)
+  │
+  ├── b97fa92e  feat: add --dfs-order flag to list-windows  ◀── FLOATING WINDOW PATCHES
+  │     └─ FocusCommand.swift, ListWindowsCommand.swift, ListWindowsCmdArgs.swift
+  │     └─ Why: three related problems solved in one commit:
+  │     │
+  │     │  1. SKETCHYBAR ORDER MISMATCH
+  │     │     list-windows had no way to return windows in focus-cycle order.
+  │     │     Added --dfs-order flag so sketchybar bar items match navigation.
+  │     │
+  │     │  2. FLOATING WINDOW POSITION INSTABILITY
+  │     │     makeFloatingWindowsSeenAsTiling() queries live AX coordinates
+  │     │     and inserts floating windows into the tiling tree by screen
+  │     │     position. When a floating window straddles two tiled windows,
+  │     │     the >= comparison on center projection flips unpredictably,
+  │     │     making the floating window jump left/right in the list on
+  │     │     each poll. Fix: list-windows --dfs-order appends floating
+  │     │     windows at end in stable workspace-child order.
+  │     │
+  │     │  3. FOCUS NAVIGATION MISMATCH
+  │     │     focus dfs-next/prev was still using position-based insertion
+  │     │     so navigation order diverged from the displayed order.
+  │     │     Fix: dfsRelative case now builds its own list (tiled +
+  │     │     floating appended) matching list-windows --dfs-order.
+  │     │     Directional focus (left/right/up/down) still uses positional
+  │     │     insertion since spatial adjacency matters there.
+  │     │
+  │     └─ Rebase strategy: re-apply flag definition in ListWindowsCmdArgs,
+  │        conditional branch in ListWindowsCommand, and the
+  │        needsPositionalFloating guard + append logic in FocusCommand.
+  │        If upstream refactors makeFloatingWindowsSeenAsTiling, find the
+  │        renamed function and adjust.
+  │
+  └── 8daad4a1  docs(agents): add bump skill
+        └─ .agents/, AGENTS.md, FLOATING_WINDOW_FOCUS_BUG.md (all fork-only)
+        └─ Why: agent tooling for automated upstream rebase
+
+  ─── Conflict risk legend ───
+  ■ High   : modifies upstream Swift source (b4279851, b97fa92e)
+  □ None   : fork-only files or CI config (all others)
+#+end_example
+
+** Floating window change traceability
+
+| Problem observed                         | Root cause                                        | Fix in patch   | Code location                        |
+|------------------------------------------+---------------------------------------------------+----------------+--------------------------------------|
+| Sketchybar order ≠ focus cycle order     | =list-windows= used flat traversal, focus used DFS | =b97fa92e=     | =ListWindowsCommand.swift:35-43=     |
+| Floating window jumps in sketchybar      | =makeFloatingWindowsSeenAsTiling= uses live AX pos | =b97fa92e=     | =ListWindowsCommand.swift:35-43=     |
+| =focus dfs-next= lands on wrong window   | Navigation used position-based, display used append | =b97fa92e=     | =FocusCommand.swift:10-16, 43-46=    |
+| Upstream sort masks tree order           | =sortedBy= on app name after traversal             | =b4279851=     | =ListWindowsCommand.swift= (1 line)  |
+
 * Bundle ID Configuration
 
 The app bundle identifier is configured in =project.yml= and used during builds via XcodeGen.
