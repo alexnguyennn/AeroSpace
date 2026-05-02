@@ -57,11 +57,32 @@ CASK_FILE="$TAP_DIR/Casks/aerospace.rb"
 cat "$CASK_FILE"
 ```
 
+## Verify zip structure matches cask paths
+
+Before updating the tap, confirm the release zip layout matches what the cask expects.
+The zip must nest everything under `AeroSpace-v<version>/` — this changed in
+upstream commit `79a0ceb6` (Cleanup). If the zip structure changes again, the
+cask binary/app paths must also change.
+
+```bash
+unzip -l /tmp/aerospace-release.zip | head -10
+```
+
+Expected layout:
+```
+AeroSpace-v<version>/AeroSpace.app/...
+AeroSpace-v<version>/bin/aerospace
+AeroSpace-v<version>/shell-completion/...
+AeroSpace-v<version>/manpage/...
+```
+
+If files appear at the zip root (no subdirectory), the cask template below
+needs to be updated to remove the `AeroSpace-v#{version}/` prefix from all paths.
+
 ## Update version and sha256
 
 Replace the `version` and `sha256` lines in the cask file. The URL template
-`https://github.com/alexnguyennn/AeroSpace/releases/download/v#{version}/AeroSpace-v#{version}.zip`
-uses interpolation so only version and sha256 need updating.
+uses `#{version}` interpolation so only those two lines need updating.
 
 ```bash
 # Use sed or the edit tool to update these two lines:
@@ -69,7 +90,10 @@ uses interpolation so only version and sha256 need updating.
 #   sha256 "..."
 ```
 
-**Do not change the URL template, postflight, binary paths, or other lines.**
+**Do not use the `aerospace.rb` uploaded as a release asset** — the CI
+build generates it with a `file:///Users/runner/...` URL (local runner path).
+Always update the tap from the template below or from a local `build-brew-cask.sh`
+run with the GitHub URL.
 
 ## Commit and push
 
@@ -101,8 +125,8 @@ brew upgrade aerospace
 
 ## Cask file structure reference
 
-The cask at `Casks/aerospace.rb` follows this structure (do not change
-paths -- they match the release zip layout):
+The cask at `Casks/aerospace.rb` follows this structure. Paths use the
+`AeroSpace-v#{version}/` subdirectory prefix matching the zip layout:
 
 ```ruby
 cask "aerospace" do
@@ -115,11 +139,17 @@ cask "aerospace" do
   conflicts_with cask: 'aerospace-dev'
   depends_on macos: ">= :ventura"
   postflight do
-    system "xattr -d com.apple.quarantine #{staged_path}/bin/aerospace"
+    system "xattr -d com.apple.quarantine #{staged_path}/AeroSpace-v#{version}/bin/aerospace"
     system "xattr -d com.apple.quarantine #{appdir}/AeroSpace.app"
   end
-  app "AeroSpace.app"
-  binary "bin/aerospace"
-  # shell completions and manpages follow
+  app "AeroSpace-v#{version}/AeroSpace.app"
+  binary "AeroSpace-v#{version}/bin/aerospace"
+  binary "AeroSpace-v#{version}/shell-completion/zsh/_aerospace",
+      target: "#{HOMEBREW_PREFIX}/share/zsh/site-functions/_aerospace"
+  binary "AeroSpace-v#{version}/shell-completion/bash/aerospace",
+      target: "#{HOMEBREW_PREFIX}/etc/bash_completion.d/aerospace"
+  binary "AeroSpace-v#{version}/shell-completion/fish/aerospace.fish",
+      target: "#{HOMEBREW_PREFIX}/share/fish/vendor_completions.d/aerospace.fish"
+  Dir["#{staged_path}/AeroSpace-v#{version}/manpage/*"].each { |man| manpage man }
 end
 ```
