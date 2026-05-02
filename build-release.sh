@@ -121,9 +121,13 @@ cd -
 #################
 ### Brew Cask ###
 #################
+zip_uri="https://github.com/alexnguyennn/AeroSpace/releases/download/v$build_version/AeroSpace-v$build_version.zip"
+if grep -q SNAPSHOT <<< "$build_version"; then
+    zip_uri=".release/AeroSpace-v$build_version.zip"
+fi
 for cask_name in aerospace aerospace-dev; do
     ./script/build-brew-cask.sh \
         --cask-name "$cask_name" \
-        --zip-uri ".release/AeroSpace-v$build_version.zip" \
+        --zip-uri "$zip_uri" \
         --build-version "$build_version"
 done
