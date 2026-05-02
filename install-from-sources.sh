@@ -25,6 +25,12 @@ which brew-install-path > /dev/null 2>&1 || brew install nikitabobko/tap/brew-in
 # Override HOMEBREW_CACHE. Otherwise, homebrew refuses to "redownload" the snapshot file
 # Maybe there is a better way, I don't know
 rm -rf /tmp/aerospace-from-sources-brew-cache
+# The cask file's URL points to the GitHub release (for non-SNAPSHOT builds), but the
+# release doesn't exist yet at CI build time. Override it to the local zip path.
+local_version=$(sed -n "s/^ *version '\\(.*\\)'$/\\1/p" .release/aerospace-dev.rb)
+if test -n "$local_version"; then
+    sed -i '' "s|url .*|url \"file://$(pwd)/.release/AeroSpace-v${local_version}.zip\"|" .release/aerospace-dev.rb
+fi
 HOMEBREW_CACHE=/tmp/aerospace-from-sources-brew-cache brew install-path ./.release/aerospace-dev.rb
 
 rm -rf "$(brew --prefix)/Library/Taps/aerospace-dev-user" # Compatibility. Drop after a while
