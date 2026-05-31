@@ -121,13 +121,21 @@ cd -
 #################
 ### Brew Cask ###
 #################
-zip_uri="https://github.com/alexnguyennn/AeroSpace/releases/download/v$build_version/AeroSpace-v$build_version.zip"
-if grep -q SNAPSHOT <<< "$build_version"; then
-    zip_uri=".release/AeroSpace-v$build_version.zip"
-fi
+# Always use the local zip for SHA computation — the GitHub release doesn't
+# exist yet at CI build time. For non-SNAPSHOT builds, patch the URL to the
+# GitHub release URL afterwards so the uploaded cask files point to the release.
+local_zip=".release/AeroSpace-v$build_version.zip"
 for cask_name in aerospace aerospace-dev; do
     ./script/build-brew-cask.sh \
         --cask-name "$cask_name" \
-        --zip-uri "$zip_uri" \
+        --zip-uri "$local_zip" \
         --build-version "$build_version"
 done
+
+# For tagged releases, update the cask URL to point to the GitHub release
+if ! grep -q SNAPSHOT <<< "$build_version"; then
+    release_url="https://github.com/alexnguyennn/AeroSpace/releases/download/v$build_version/AeroSpace-v$build_version.zip"
+    for cask_name in aerospace aerospace-dev; do
+        sed -i '' "s|url .*|url \"$release_url\"|" ".release/$cask_name.rb"
+    done
+fi
