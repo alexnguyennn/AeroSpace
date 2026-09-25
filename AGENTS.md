@@ -12,6 +12,7 @@ This is a fork of [nikitabobko/AeroSpace](https://github.com/nikitabobko/AeroSpa
 
 - `.agents/skills/aerospace-upstream-rebase/` — rebase fork onto new upstream release, resolve conflicts, tag, push, update brew. Triggers: upstream sync, bump aerospace, update fork.
 - `.agents/skills/aerospace-release-ops/` — end-to-end release lifecycle: tag, CI monitoring, failure fan-out, brew tap update at `alexnguyennn/tap`, local artifact install, branch build verification. Triggers: release, cut release, tag build, watch build, brew tap update, install aerospace, deploy build, ship it, download build, local install.
+- `.agents/skills/aerospace-upgrade/` — end-to-end upstream tag, config migration, companion compatibility, Nix lock/rebuild, and running-version upgrade readiness. Triggers: upgrade AeroSpace, latest upstream tag, config migration, upgrade gaps/blockers, sync aerospace-marks and aerospace-scratchpad.
 
 ## Agents
 
