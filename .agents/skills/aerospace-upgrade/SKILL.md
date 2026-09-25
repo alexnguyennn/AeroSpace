@@ -39,8 +39,9 @@ Publish a brief with evidence, actionable gaps, blockers, owner, and next
 verification before changing versions.
 
 **Resolve** — Fix blockers in dependency order: source-managed config and
-scripts; fork rebase/build and release; compatible companion lock updates and
-Nix evaluation/build; deployment. Reassess after each fix, limiting failed
+scripts; fork rebase/build and release; update only the `aerospace-*` entries
+in the Nix flake lock, then evaluate/build the host without switching; finally,
+deployment. Reassess after each fix, limiting failed
 attempts per issue to three. Preserve unrelated work; use a worktree for fork
 rebases or isolate Nix changes when the existing checkout is dirty. Get the
 required confirmation for release and local replacement via the release skill.

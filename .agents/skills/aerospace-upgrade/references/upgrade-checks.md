@@ -26,7 +26,7 @@
 | Configuration | `docs/config-examples/default-config.toml`, guide, parser, config-version, live keys, callbacks, bindings and shell quoting | Offline target-parser test before deployment; target `aerospace reload-config --dry-run --no-gui --warnings-as-errors` after cutover |
 | Commands | Breaking commits, changed flags/exit codes, fork `--dfs-order` and external scripts | Target CLI help/tests and representative read-only commands |
 | Socket clients | Companion READMEs/releases and source against target protocol; do not assume latest is backward-compatible | Companion `info`/version or smoke command against *running* target |
-| Nix | `flake.nix` refs, `flake.lock` revisions and each locked input's actual `packages.<system>.default` version, plus cask declaration and local diff | Update only those inputs with `nix flake update aerospace-marks aerospace-scratchpad`, evaluate/build host derivation before switch |
+| Nix | `flake.nix` refs, `flake.lock` revisions and each locked input's actual `packages.<system>.default` version, plus cask declaration and local diff | Update only those inputs with `nix flake update aerospace-marks aerospace-scratchpad`; confirm only `aerospace-*` lock nodes changed, then `nix build .#darwinConfigurations.<host>.system --no-link` before switch |
 | Deployment | Fork release artifact, cask SHA, app/CLI backup, currently running server | App and CLI same tag; `aerospace --version`; config dry-run, companions and binding smoke checks |
 
 Check the companion source at the **locked revision** as well as at the desired
@@ -35,7 +35,11 @@ the default package versions and target AeroSpace compatibility stated by each
 project. A lock may already point to a newer incompatible package even while
 the machine still runs an older binary. If a latest version
 is incompatible with the installed server, arrange a coordinated cutover.
-Never update every flake input for a two-input upgrade.
+Never update every flake input for a two-input upgrade. The Nix preparation
+does not require fetching the checkout's Git origin: update the two flake
+inputs in the isolated worktree and verify the resulting `flake.lock` diff
+before building. Do not edit `flake.nix` or unrelated Homebrew roles as part
+of this preparation.
 
 When validating the config offline with `AppBundle.parseConfig` under XCTest,
 note that its unit-test environment substitutes a minimal `testEnv` without
@@ -72,10 +76,9 @@ it survives sessions.
 Then fix each gap and update the brief/plan. Use the repo's
 `aerospace-upstream-rebase` skill for fork conflict handling and
 `aerospace-release-ops` for CI, cask and local installation. Verify fork
-patches against the target's refactored code rather than mechanically applying
-old hunks. The Nix origin may be encrypted (`git-remote-gcrypt`): a cancelled
-GPG prompt blocks remote fetch but does not invalidate local inspection;
-resolve interactively when a remote operation is actually required.
+ patches against the target's refactored code rather than mechanically applying
+ old hunks. Do not fetch the encrypted Nix Git origin for the lock-update/build
+ workflow; remote operations belong to a separate publishing decision.
 
 For a Nix-managed macOS host, evaluate/build its `darwinConfigurations` output
 and deploy via the repo's documented `nh darwin switch -v .` workflow from the
