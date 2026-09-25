@@ -133,11 +133,11 @@ Each patch is designed to be small and independently re-appliable during rebase.
 
 * Bundle ID Configuration
 
-The app bundle identifier is configured in =project.yml= and used during builds via XcodeGen.
+The app bundle identifier is configured in =xcode/project.yml= and used during builds via XcodeGen.
 NOTE: this is how macOS determines uniqueness of app on startup/with permissions etc - change if we run into problems running side by side with public release
 
 **Primary Configuration Location:**
-- File: =project.yml= (lines 40 & 43)
+- File: =xcode/project.yml= (locate the Release/Debug bundle identifiers)
 - Debug bundle ID: =bobko.aerospace.debug=
 - Release bundle ID: =bobko.aerospace=
 
@@ -154,14 +154,14 @@ settings:
 
 **Build Process:**
 1. =generate.sh= is called by =build-release.sh= (lines 22-24)
-2. =generate.sh= runs XcodeGen (line 66) which reads =project.yml=
-3. XcodeGen generates =AeroSpace.xcodeproj/project.pbxproj= with bundle IDs
+2. =generate.sh= runs XcodeGen which reads =xcode/project.yml=
+3. XcodeGen generates =xcode/AeroSpace.xcodeproj/project.pbxproj= with bundle IDs
 4. =xcodebuild= uses the generated project to build the app
 5. GitHub Actions workflow (=.github/workflows/build.yml=) orchestrates this automatically
 
 **To Change Bundle ID:**
-- Edit =project.yml= lines 40 and/or 43
+- Edit the Debug/Release bundle identifiers in =xcode/project.yml=
 - Run =./generate.sh= to regenerate the Xcode project
 - The CI workflow handles this automatically during builds
 
-**Note:** The =AeroSpace.xcodeproj/project.pbxproj= file is auto-generated - do not edit it directly.
+**Note:** The =xcode/AeroSpace.xcodeproj/project.pbxproj= file is auto-generated - do not edit it directly.

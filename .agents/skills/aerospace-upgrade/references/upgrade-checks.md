@@ -23,17 +23,28 @@
 
 | Area | Compare against target | Proof |
 | --- | --- | --- |
-| Configuration | `docs/config-examples/default-config.toml`, guide, parser, config-version, live keys, callbacks, bindings and shell quoting | Target `aerospace reload-config --dry-run --no-gui --warnings-as-errors`; version-specific flags only after checking help |
+| Configuration | `docs/config-examples/default-config.toml`, guide, parser, config-version, live keys, callbacks, bindings and shell quoting | Offline target-parser test before deployment; target `aerospace reload-config --dry-run --no-gui --warnings-as-errors` after cutover |
 | Commands | Breaking commits, changed flags/exit codes, fork `--dfs-order` and external scripts | Target CLI help/tests and representative read-only commands |
 | Socket clients | Companion READMEs/releases and source against target protocol; do not assume latest is backward-compatible | Companion `info`/version or smoke command against *running* target |
-| Nix | `flake.nix` refs and `flake.lock` revisions for `aerospace-marks` and `aerospace-scratchpad`; brew cask declaration and local diff | Update only those inputs with `nix flake update aerospace-marks aerospace-scratchpad` or supported `--update-input` syntax, evaluate/build the host derivation before switch |
+| Nix | `flake.nix` refs, `flake.lock` revisions and each locked input's actual `packages.<system>.default` version, plus cask declaration and local diff | Update only those inputs with `nix flake update aerospace-marks aerospace-scratchpad`, evaluate/build host derivation before switch |
 | Deployment | Fork release artifact, cask SHA, app/CLI backup, currently running server | App and CLI same tag; `aerospace --version`; config dry-run, companions and binding smoke checks |
 
 Check the companion source at the **locked revision** as well as at the desired
 revision. The two `nightly` refs can move independently; record both SHAs and
-the target AeroSpace compatibility stated by each project. If a latest version
+the default package versions and target AeroSpace compatibility stated by each
+project. A lock may already point to a newer incompatible package even while
+the machine still runs an older binary. If a latest version
 is incompatible with the installed server, arrange a coordinated cutover.
 Never update every flake input for a two-input upgrade.
+
+When validating the config offline with `AppBundle.parseConfig` under XCTest,
+note that its unit-test environment substitutes a minimal `testEnv` without
+`HOME` or `USER`. A temporary test can supply the values observed in the
+running app's `list-exec-env-vars`; restore all test-only edits afterward.
+Record the assumption and still run a full target-server dry-run at cutover.
+For local release builds, verify Swift, Ruby, fish, and Xcode availability
+before starting; on a Nix-managed Homebrew host prefer ephemeral tool paths
+and preserve `mise` on PATH when the build setup sanitizes it.
 
 ## Gate and progression
 

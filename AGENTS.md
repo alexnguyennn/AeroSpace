@@ -21,7 +21,7 @@ This is a fork of [nikitabobko/AeroSpace](https://github.com/nikitabobko/AeroSpa
 ## Build
 
 - `./build-release.sh` builds the release artifact
-- `./generate.sh` regenerates the Xcode project from `project.yml` (do not edit `.xcodeproj` directly)
+- `./generate.sh` regenerates the Xcode project from `xcode/project.yml` (do not edit `.xcodeproj` directly)
 - CI: `.github/workflows/build.yml` (manual trigger)
 
 ## Fork Patch Policy
