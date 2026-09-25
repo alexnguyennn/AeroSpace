@@ -30,12 +30,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - run: env # Debug
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - run: ./.github/gh-actions-runner-xcode-select.sh
-      - run: brew install swiftly
+      - run: brew install swiftly bash
       - run: swiftly init --skip-install --assume-yes --verbose && swiftly install
+      - run: swiftly run swift --version
       - run: ./build-debug.sh
-      - run: ./run-tests.sh
+      - run: ./test.sh
 
   # We build release artifacts only on the latest macOS versions because:
   # 1. It cuts the build time twice on GH Actions
@@ -49,10 +50,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - run: env # Debug
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - run: ./.github/gh-actions-runner-xcode-select.sh
       - run: brew install bash fish xcbeautify swiftly
       - run: swiftly init --skip-install --assume-yes --verbose && swiftly install
+      - run: swiftly run swift --version
       - name: 'Determine build version'
         id: version
         run: |
@@ -105,7 +107,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       
       - name: Extract version from tag
         id: version
