@@ -25,9 +25,11 @@ config path/source, Nix input locks, and host flake target; never infer any of
 these from a previous run or a sample config.
 
 **Record** — Create or resume `runs/<upstream-tag>.md` using the fields in the
-reference. Update it after every gate with source links/SHAs, exact commands
-and results, changes, blockers, rollback and the next safe action. Commit the
-record so a later session can pick up from evidence, revalidating stale facts.
+reference. Lead with a short status and a compact gate table; keep one row per
+area, link or name the decisive evidence, and call out deferred checks. Put only
+material blockers, changes and the next safe action in the summary. Keep long
+logs and repeated command output out of the run note. Commit the record after
+material gates so later sessions can resume from evidence and refresh stale facts.
 
 **Assess** — Compare *every intervening release* and relevant upstream commits,
 especially `BREAKING CHANGE`, config version/parser/defaults, CLI flags and

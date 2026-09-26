@@ -23,7 +23,7 @@
 
 | Area | Compare against target | Proof |
 | --- | --- | --- |
-| Configuration | `docs/config-examples/default-config.toml`, guide, parser, config-version, live keys, callbacks, bindings and shell quoting | Offline target-parser test before deployment; target `aerospace reload-config --dry-run --no-gui --warnings-as-errors` after cutover |
+| Configuration | Live TOML against target version: root/options, modes and keymaps, every binding/command, callbacks, all `on-window-detected` rules, gaps/assignments and exec-env interpolation | Exact live-file target-parser sweep; zero errors/warnings. Save counts and command/result. Target server dry-run is a separate cutover gate. |
 | Commands | Breaking commits, changed flags/exit codes, fork `--dfs-order` and external scripts | Target CLI help/tests and representative read-only commands |
 | Socket clients | Companion READMEs/releases and source against target protocol; do not assume latest is backward-compatible | Companion `info`/version or smoke command against *running* target |
 | Nix | `flake.nix` refs, `flake.lock` revisions and each locked input's actual `packages.<system>.default` version, plus cask declaration and local diff | Update only those inputs with `nix flake update aerospace-marks aerospace-scratchpad`; confirm only `aerospace-*` lock nodes changed, then `nix build .#darwinConfigurations.<host>.system --no-link` before switch |
@@ -41,6 +41,30 @@ inputs in the isolated worktree and verify the resulting `flake.lock` diff
 before building. Do not edit `flake.nix` or unrelated Homebrew roles as part
 of this preparation.
 
+## Live configuration sweep
+
+For a version upgrade, enumerate the live TOML structurally without printing
+values, then check each category against the target parser/docs. Include:
+
+1. Version and every top-level/nested option (unknown keys are errors).
+2. Key-mapping, every mode and binding, and every command string/list. The
+   target config parser uses the target command/shell parser for these values.
+3. All callbacks and every `on-window-detected` entry; check target-required
+   predicates and deprecated/removed forms.
+4. Gaps, monitor assignments, and `exec.env-vars`, including variable
+   interpolation using the actual app environment.
+5. External consumers of changed commands/flags/output (for example
+   Sketchybar and companion scripts).
+
+Run `AppBundle.parseConfig` on the **exact live file** in a target-version test
+harness and require zero errors and warnings. When an XCTest substitutes a
+minimal environment, supply only the live app's required `HOME`/`USER` values;
+record that test-only accommodation. This proves offline parser compatibility,
+not server/runtime compatibility. At cutover, run the target server's
+`aerospace reload-config --dry-run --no-gui --warnings-as-errors` and record
+that as a separate result. Summarize the sweep in a small table with category,
+coverage count, result and evidence; list only exceptions below it.
+
 When validating the config offline with `AppBundle.parseConfig` under XCTest,
 note that its unit-test environment substitutes a minimal `testEnv` without
 `HOME` or `USER`. A temporary test can supply the values observed in the
@@ -52,26 +76,26 @@ and preserve `mise` on PATH when the build setup sanitizes it.
 
 ## Gate and progression
 
-Write a brief *before* a rebase, release, or switch:
+Write a short brief *before* a rebase, release, or switch. Prefer this shape:
 
 ```text
-Target: upstream tag, fork base/tag, installed CLI/app/running server
-Gaps: changed behavior → live usage → proposed source edit and verification
-Companions: locked → candidate marks/scratchpad SHAs, supported protocol
-Blockers: concrete failure → resolution owner → next check
-Sequence: config source → fork build/release → Nix locks/build → coordinated install/switch/restart → smoke
+Target: <upstream tag> | Installed: <CLI/server> | Scope: <prep/deploy>
+Status: <READY / HOLD> — <one sentence>
+| Gate | Result | Evidence | Next |
+| Config sweep | PASS / HOLD | <test and coverage counts> | <dry-run at cutover> |
+| Fork | PASS / HOLD | <commit, tests, CI link> | <release/tag> |
+| Nix/companions | PASS / HOLD | <lock SHA, versions, build> | <switch later> |
+Blockers: <only actionable blockers; otherwise “None for this stage”>
+Next: <one safe action>
 ```
 
-Save the brief under `runs/<upstream-tag>.md` in this skill. Resume that file
-on subsequent sessions instead of starting over. Include a dated as-of line,
-stage checklist, exact observed tag/SHAs, `git` branches/worktrees and dirty
-state, documentation and upstream release URLs, config keys examined, commands
-and exit statuses, changed paths/commits, unresolved blockers with owners and
-attempt counts, safe next commands, and rollback notes. Distinguish observed
-results from assumptions; never paste tokens, secrets, or private config
-contents into the record. Check current refs, installed versions and checkout
-status again before continuing. Commit the record after material progress so
-it survives sessions.
+Save the brief under `runs/<upstream-tag>.md`; resume it rather than restarting.
+Keep the summary to about one screen. Retain a compact evidence table with
+observed SHAs, branch/worktree, exact decisive checks and results, plus links
+to upstream docs/CI. Record changed paths/commits, actual blockers and owners,
+and rollback/next action. Move low-value chronology and full logs elsewhere;
+never paste private config values or secrets. Separate PASS, DEFERRED and
+BLOCKED. Recheck refs, installed versions and worktree status before resuming.
 
 Then fix each gap and update the brief/plan. Use the repo's
 `aerospace-upstream-rebase` skill for fork conflict handling and
