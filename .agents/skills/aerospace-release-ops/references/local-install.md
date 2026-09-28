@@ -100,7 +100,7 @@ Plan:
 - Back up /opt/homebrew/bin/aerospace -> /opt/homebrew/bin/aerospace.bk
 - Copy {APP_DIR}/AeroSpace.app -> /Applications/AeroSpace.app
 - Copy {APP_DIR}/bin/aerospace -> /opt/homebrew/bin/aerospace
-- Remove quarantine attributes recursively from the app bundle and CLI
+- Remove quarantine recursively from the app bundle and from the CLI binary
 
 Proceed? (yes/no)
 ```
@@ -125,9 +125,9 @@ fi
 cp -R "$APP_DIR/AeroSpace.app" /Applications/
 cp "$APP_DIR/bin/aerospace" /opt/homebrew/bin/
 
-# Remove quarantine recursively (nested bundle files can retain it)
+# Remove quarantine recursively from the bundle; the CLI is a single file
 xattr -dr com.apple.quarantine /Applications/AeroSpace.app
-xattr -dr com.apple.quarantine /opt/homebrew/bin/aerospace
+xattr -d com.apple.quarantine /opt/homebrew/bin/aerospace
 ```
 
 Homebrew cask postflight may leave quarantine attributes on nested files inside
