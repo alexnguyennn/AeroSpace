@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - 'main'
-      - 'rr/**' # "rr" stands for "remote run"
     tags:
       - 'v*' # Trigger on version tags (e.g., v1.0.0)
   pull_request:
