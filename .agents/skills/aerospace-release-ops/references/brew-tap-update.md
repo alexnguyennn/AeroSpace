@@ -83,6 +83,10 @@ needs to be updated to remove the `AeroSpace-v#{version}/` prefix from all paths
 
 Replace the `version` and `sha256` lines in the cask file. The URL template
 uses `#{version}` interpolation so only those two lines need updating.
+Preserve tap-specific DSL and postflight behavior. Remove quarantine recursively
+from `{{appdir}}/AeroSpace.app` with `xattr -dr`; nested app files can retain
+quarantine when only the bundle root is checked. The standalone CLI binary is a
+single file and can use non-recursive removal.
 
 ```bash
 # Use sed or the edit tool to update these two lines:
@@ -112,11 +116,12 @@ git push --set-upstream origin main
 ## Verify
 
 ```bash
+brew audit --cask --strict alexnguyennn/tap/aerospace
 brew update
-brew info alexnguyennn/tap/aerospace
+brew info --cask alexnguyennn/tap/aerospace
 ```
 
-The version should match the new tag. Upgrade with:
+Confirm `brew info` reports the new tag and release URL. Upgrade with:
 ```bash
 brew upgrade aerospace
 # or via Nix:
